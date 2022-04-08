@@ -96,7 +96,7 @@ var svg2 = d3.select("#vis2")
           "translate(" + 100 + "," + margin.top + ")");
 
 // Load in my states data!
-d3.csv("energy_updated.csv").then(function(data) {
+d3.csv("data/energy_updated.csv").then(function(data) {
 	let stackData = [];
 
 	data.forEach(element => {
@@ -134,7 +134,7 @@ d3.csv("energy_updated.csv").then(function(data) {
 	})
 
 	// Load GeoJSON data and merge with states data
-	d3.json("usa.json").then(function(json) {
+	d3.json("data/usa.json").then(function(json) {
 		// Loop through each state data value in the .csv file
 		for (var i = 0; i < data.length; i++) {
 			// Grab State Name
@@ -330,7 +330,7 @@ var svg3 = d3.select("#vis3")
           "translate(" + margin3.left + "," + margin3.top + ")");
 
 // Parse the Data
-d3.csv("top_ten_expenditures.csv", function(d) {
+d3.csv("data/top_ten_expenditures.csv", function(d) {
 	return {
 	state: d["State"],
     total: +d['Expenditure.Total'],

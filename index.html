@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src ="https://d3js.org/d3.v6.js"></script>
+<style type="text/css">
+
+/* On mouse hover, lighten state color */
+path:hover {
+	fill-opacity: .7;
+}
+
+/* Style for Custom Tooltip */
+div.tooltip {   
+ 	position: absolute;           
+	text-align: center;           
+	width: 150px;                  
+	height: 20px;                 
+	padding: 2px;             
+	font: 12px sans-serif;        
+	background: white;   
+	border: 0px;      
+	border-radius: 8px;           
+	pointer-events: none;         
+}
+        
+/* Legend Font Style */
+body {
+	font: 11px sans-serif;
+}
+
+</style>
+</head>
+<body>
+	<h1 style="text-align: center;">Exploring Energy Data in the United States</h1>
+	<h3 style="text-align: center;">Click a state to view it's breakdown of consumption through sectors and energy sources!</h3>
+	<div id="vis" style="text-align: center;"> </div>
+	<div id="vis2" style="text-align: center;"> </div>
+	<h2 style="text-align: center;">Distribution of Expenditures in the top ten states of highest Expenditures</h2>
+	<div id = "vis3" style="text-align: center;"></div>
+	
+
+<script type="text/javascript">
+
+/*  This visualization was made possible by modifying code provided by:
+
+Scott Murray, Choropleth example from "Interactive Data Visualization for the Web" 
+https://github.com/alignedleft/d3-book/blob/master/chapter_12/05_choropleth.html   
+		
+Malcolm Maclean, tooltips example tutorial
+http://www.d3noob.org/2013/01/adding-tooltips-to-d3js-graph.html
+
+Mike Bostock, Pie Chart Legend
+http://bl.ocks.org/mbostock/3888852  */
+
+		
+//Width and height of map
+var width = 960;
+var height = 500;
+
+const margin = {top: 50, right: 50, bottom: 50, left: 50},
+          width2 = 800 - margin.left - margin.right,
+          height2 = 600 - margin.top - margin.bottom;
+
+// D3 Projection
+var projection = d3.geoAlbersUsa()
+				   .translate([width/2, height/2])    // translate to center of screen
+				   .scale([1000]);          // scale things down so see entire US
+        
+// Define path generator
+var path = d3.geoPath()               // path generator that will convert GeoJSON to SVG paths
+		  	 .projection(projection);  // tell path generator to use albersUsa projection
+
+var color = d3.scaleLinear()
+  .range(["#c3c7c6", "#69b3a2"])
+  .domain([0, 2000000])
+
+//Create SVG element and append map to the SVG
+var svg = d3.select("#vis")
+			.append("svg")
+			.attr("width", width)
+			.attr("height", height);
+        
+// Append Div for tooltip to SVG
+var div = d3.select("#vis")
+		    .append("div")   
+    		.attr("class", "tooltip")               
+    		.style("opacity", 0);
+
+var svg2 = d3.select("#vis2")
+  .append("svg")
+    .attr("width", width2 + margin.left + margin.right)
+    .attr("height", height2 + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform",
+          "translate(" + 100 + "," + margin.top + ")");
+
+// Load in my states data!
+d3.csv("energy_updated.csv").then(function(data) {
+	let stackData = [];
+
+	data.forEach(element => {
+		stackData[element.State] = [
+			{"Sector":"Commercial", "Coal": element['Consumption.Commercial.Coal'], "DistillateFuelOil": element['Consumption.Commercial.Distillate Fuel Oil'],
+			"Geothermal": element['Consumption.Commercial.Geothermal'], "Hydropower": element['Consumption.Commercial.Hydropower'],"Kerosene": element['Consumption.Commercial.Kerosene'],
+			"Petroleum": element['Consumption.Commercial.Petroleum'], "NaturalGas": element['Consumption.Commercial.Natural Gas'], "Solar": element['Consumption.Commercial.Solar'],
+			"Wind": element['Consumption.Commercial.Wind'], "Wood": element['Consumption.Commercial.Wood'], "OtherPetroleumProducts": element['Consumption.Commercial.Other Petroleum Products']},
+
+			{"Sector": "Electric Power","Coal": element['Consumption.Electric Power.Coal'], "DistillateFuelOil": element['Consumption.Electric Power.Distillate Fuel Oil'],
+			"Geothermal": element['Consumption.Electric Power.Geothermal'], "Hydropower": element['Consumption.Electric Power.Hydropower'],"Kerosene": element['Consumption.Electric Power.Kerosene'],
+			"Petroleum": element['Consumption.Electric Power.Petroleum'], "NaturalGas": element['Consumption.Electric Power.Natural Gas'], "Solar": element['Consumption.Electric Power.Solar'],
+			"Wind": element['Consumption.Electric Power.Wind'], "Wood": element['Consumption.Electric Power.Wood'], "OtherPetroleumProducts": element['Consumption.Electric Power.Other Petroleum Products']},
+			
+			{"Sector": "Industrial","Coal": element['Consumption.Industrial.Coal'], "DistillateFuelOil": element['Consumption.Industrial.Distillate Fuel Oil'],
+			"Geothermal": element['Consumption.Industrial.Geothermal'], "Hydropower": element['Consumption.Industrial.Hydropower'],"Kerosene": element['Consumption.Industrial.Kerosene'],
+			"Petroleum": element['Consumption.Industrial.Petroleum'], "NaturalGas": element['Consumption.Industrial.Natural Gas'], "Solar": element['Consumption.Industrial.Solar'],
+			"Wind": element['Consumption.Industrial.Wind'], "Wood": element['Consumption.Industrial.Wood'], "OtherPetroleumProducts": element['Consumption.Industrial.Other Petroleum Products']},
+
+			{"Sector": "Refinery", "Coal": element['Consumption.Refinery.Coal'], "DistillateFuelOil": element['Consumption.Refinery.Distillate Fuel Oil'],
+			"Geothermal": element['Consumption.Refinery.Geothermal'], "Hydropower": element['Consumption.Refinery.Hydropower'],"Kerosene": element['Consumption.Refinery.Kerosene'],
+			"Petroleum": element['Consumption.Refinery.Petroleum'], "NaturalGas": element['Consumption.Refinery.Natural Gas'], "Solar": element['Consumption.Refinery.Solar'],
+			"Wind": element['Consumption.Refinery.Wind'], "Wood": element['Consumption.Refinery.Wood'], "OtherPetroleumProducts": element['Consumption.Refinery.Other Petroleum Products']},
+
+			{"Sector": "Residential", "Coal": element['Consumption.Residential.Coal'], "DistillateFuelOil": element['Consumption.Residential.Distillate Fuel Oil'],
+			"Geothermal": element['Consumption.Residential.Geothermal'], "Hydropower": element['Consumption.Residential.Hydropower'],"Kerosene": element['Consumption.Residential.Kerosene'],
+			"Petroleum": element['Consumption.Residential.Petroleum'], "NaturalGas": element['Consumption.Residential.Natural Gas'], "Solar": element['Consumption.Residential.Solar'],
+			"Wind": element['Consumption.Residential.Wind'], "Wood": element['Consumption.Residential.Wood'], "OtherPetroleumProducts": element['Consumption.Residential.Other Petroleum Products']},
+
+			{"Sector": "Transportation", "Coal": element['Consumption.Transportation.Coal'], "DistillateFuelOil": element['Consumption.Transportation.Distillate Fuel Oil'],
+			"Geothermal": element['Consumption.Transportation.Geothermal'], "Hydropower": element['Consumption.Transportation.Hydropower'],"Kerosene": element['Consumption.Transportation.Kerosene'],
+			"Petroleum": element['Consumption.Transportation.Petroleum'], "NaturalGas": element['Consumption.Transportation.Natural Gas'], "Solar": element['Consumption.Transportation.Solar'],
+			"Wind": element['Consumption.Transportation.Wind'], "Wood": element['Consumption.Transportation.Wood'], "OtherPetroleumProducts": element['Consumption.Transportation.Other Petroleum Products']},
+		]
+	})
+
+	// Load GeoJSON data and merge with states data
+	d3.json("usa.json").then(function(json) {
+		// Loop through each state data value in the .csv file
+		for (var i = 0; i < data.length; i++) {
+			// Grab State Name
+			var dataState = data[i].State;
+
+			// Grab data value 
+			var dataValue = data[i]['Consumption.Total'];
+
+			// Find the corresponding state inside the GeoJSON
+			for (var j = 0; j < json.features.length; j++)  {
+				var jsonState = json.features[j].properties.NAME;
+
+				if (dataState == jsonState) {
+					// Copy the data value into the JSON
+					json.features[j].properties.consumption = dataValue; 
+					json.features[j].properties.stackData = stackData[jsonState];
+					
+					// Stop looking through the JSON
+					break;
+				}
+			}
+		}
+
+			
+		// Bind the data to the SVG and create one path per GeoJSON feature
+		svg.selectAll("path")
+			.data(json.features)
+			.enter()
+			.append("path")
+			.attr("d", path)
+			.on("mouseover", function(d) {   
+				div.transition()        
+				.duration(200)      
+				.style("opacity", .9);
+				div.text(d.target.__data__.properties.NAME + ": " + d.target.__data__.properties.consumption.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','))
+				.style("left", (d.pageX) + "px")     
+				.style("top", (d.pageY - 28) + "px");    
+			})   
+
+			// fade out tooltip on mouse out               
+			.on("mouseout", function(d) {       
+				div.transition()        
+				.duration(500)      
+				.style("opacity", 0);   
+			}) 
+			.on("click", function(d) {
+				svg2.selectAll('*').remove();
+				let groups = d.target.__data__.properties.stackData.map(s => s.Sector);	// all sectors
+				let subgroups = Object.keys(d.target.__data__.properties.stackData[0]).slice(1); // all sources
+				// replacing all undefined values with 0
+				d.target.__data__.properties.stackData.map(obj => {
+					Object.keys(obj).forEach(function(key) {
+						if(obj[key] === undefined) {
+							obj[key] = '0.0';
+						}
+					})
+				})
+
+				// Add X axis
+				var x = d3.scaleBand()
+						.domain(groups)
+						.range([0, width2])
+						.padding(0.2)
+
+				svg2.append("g")
+					.attr("transform", "translate(0," + height2 + ")")
+					.call(d3.axisBottom(x).tickSizeOuter(0));
+
+				// Add Y axis
+				var y = d3.scaleLinear()
+						.domain([0, 2000000])
+						.range([ height2, 0 ]);
+
+				svg2.append("g")
+					.call(d3.axisLeft(y));
+
+				// color palette = one color per subgroup
+				var color2 = d3.scaleOrdinal()
+				.domain(subgroups)
+				.range(d3.schemeSet3);
+
+				const stackedData = d3.stack()
+					.keys(subgroups)
+					(d.target.__data__.properties.stackData)
+
+				var tooltip = d3.select("#vis2")
+				.append("div")
+				.style("opacity", 0)
+				.attr("class", "tooltip")
+				.style("background-color", "white")
+				.style("border", "solid")
+				.style("border-width", "1px")
+				.style("border-radius", "5px")
+				.style("padding", "10px")
+
+					// Show the bars
+				 svg2.append("g")
+					.selectAll("g")
+					// Enter in the stack data = loop key per key = group per group
+					.data(stackedData)
+					.join("g")
+					.attr("fill", d => color2(d.key))
+					.attr("class", d => "myRect " + d.key ) // Add a class to each subgroup: their name
+					.selectAll("rect")
+					// enter a second time = loop subgroup per subgroup to add all rectangles
+					.data(d => d)
+					.join("rect")
+						.attr("x", d => x(d.data.Sector))
+						.attr("y", d => y(d[1]))
+						.attr("height", d => y(d[0]) - y(d[1]))
+						.attr("width",x.bandwidth())
+						.attr("stroke", "grey")
+						.on("mouseover", function (event,d) { // What happens when user hover a bar
+
+						// what subgroup are we hovering?
+						const subGroupName = d3.select(this.parentNode).datum().key
+						var subgroupValue = d.data[subGroupName];
+
+						tooltip
+						.html("Sector: " + subGroupName + "<br>" + "Consumption: " + subgroupValue.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','))
+						.style("opacity", 1)
+						.style("left", (event.pageX) + "px")     
+						.style("top", (event.pageY - 28) + "px");     
+
+						// Reduce opacity of all rect to 0.2
+						d3.selectAll(".myRect").style("opacity", 0.2)
+
+						// Highlight all rects of this subgroup with opacity 1. It is possible to select them since they have a specific class = their name.
+						d3.selectAll("."+subGroupName).style("opacity",1)
+						})
+						.on("mousemove", function(event, d){
+							tooltip
+							.style("left", (event.pageX+90) + "px") // It is important to put the +90: other wise the tooltip is exactly where the point is an it creates a weird effect
+							.style("top", (event.pageY) + "px")
+						})
+						.on("mouseleave", function (event,d) { // When user do not hover anymore
+
+						// Back to normal opacity: 1
+						d3.selectAll(".myRect")
+						.style("opacity",1)
+
+						tooltip
+      					.style("opacity", 0)
+					})
+				})
+			.style("stroke", "#fff")
+			.style("stroke-width", "1")
+			.style("fill", function(d) {
+				// Get data value
+				var value = d.properties.consumption;
+
+				if (value) {
+					//If value exists…
+					return color(value);
+				} else {
+					//If value is undefined…
+					return "rgb(213,222,217)";
+				}
+			}); 
+	});
+
+});
+</script>
+
+
+<script>
+
+// set the dimensions and margins of the graph
+var margin3 = {top: 30, right: 30, bottom: 70, left: 60},
+    width3 = 1000 - margin3.left - margin3.right,
+    height3 = 800 - margin3.top - margin3.bottom;
+
+// Append Div for tooltip to SVG
+var div3 = d3.select("#vis3")
+		    .append("div")   
+    		.attr("class", "tooltip")               
+    		.style("opacity", 0)
+    		.style("background-color", "white")
+    		.style("height", "auto")
+				.style("border", "solid")
+				.style("border-width", "1px")
+				.style("border-radius", "5px")
+				.style("padding", "5px");
+
+
+// append the svg object to the body of the page
+var svg3 = d3.select("#vis3")
+  	.append("svg")
+	.attr("width", width3 + margin3.left + margin3.right)
+    .attr("height", height3 + margin3.top + margin3.bottom)
+  	.append("g")
+    .attr("transform",
+          "translate(" + margin3.left + "," + margin3.top + ")");
+
+// Parse the Data
+d3.csv("top_ten_expenditures.csv", function(d) {
+	return {
+	state: d["State"],
+    total: +d['Expenditure.Total'],
+    coal: +d['Expenditure.Commercial.Coal'] + +d['Expenditure.Industrial.Coal'] + +d['Expenditure.Residential.Coal'] + +d['Expenditure.Transportation.Coal'],
+    "Distillate Fuel Oil": +d['Expenditure.Commercial.Distillate Fuel Oil'] + +d['Expenditure.Electric Power.Distillate Fuel Oil'] + +d['Expenditure.Industrial.Distillate Fuel Oil'] + +d['Expenditure.Residential.Distillate Fuel Oil'] + +d['Expenditure.Transportation.Distillate Fuel Oil'],
+    Kerosene: +d['Expenditure.Commercial.Kerosene'] + +d['Expenditure.Industrial.Kerosene'] + +d['Expenditure.Residential.Kerosene'],
+    Petroleum: +d['Expenditure.Commercial.Petroleum'] + +d['Expenditure.Industrial.Petroleum'] + +d['Expenditure.Residential.Petroleum'] + +d['Expenditure.Transportation.Petroleum'],
+    "Natural Gas": +d['Expenditure.Commercial.Natural Gas'] + +d['Expenditure.Electric Power.Natural Gas'] + +d['Expenditure.Industrial.Natural Gas'] + +d['Expenditure.Residential.Natural Gas'] + +d['Expenditure.Transportation.Natural Gas'],
+    "Other Petroleum Products": +d['Expenditure.Industrial.Other Petroleum Products'],
+    Wood: +d['Expenditure.Residential.Wood']
+  };
+}).then( function(data) {
+
+// X axis
+var x = d3.scaleBand()
+  .range([ 0, width3 ])
+  .domain(data.map(function(d) { return d.state; }))
+  .padding(0.2);
+
+svg3.append("g")
+  .attr("transform", "translate(0," + height3 + ")")
+  .call(d3.axisBottom(x))
+  .selectAll("text")
+    .attr("transform", "translate(-10,0)rotate(-45)")
+    .style("text-anchor", "end");
+
+// Add Y axis
+var y = d3.scaleLinear()
+  .domain([0, 13000])
+  .range([ height3, 0]);
+
+svg3.append("g")
+  .call(d3.axisLeft(y));
+
+// Bars
+svg3.selectAll("mybar")
+  .data(data)
+  .enter()
+  .append("rect")
+    .attr("x", function(d) { return x(d.state); })
+    .attr("y", function(d) { return y(d.total); })
+    .attr("width", x.bandwidth())
+    .attr("height", function(d) { return height3 - y(d.total); })
+    .attr("fill", "#69b3a2")
+  .on("mouseover", function(event, d) {   
+			div3.transition()        
+			.duration(200)      
+			.style("opacity", .9);
+			let sources = Object.keys(d).slice(2)
+			text_string = ""
+			sources.map(function(obj) {
+				if(d[obj] > 0){
+					percent = (d[obj]/d['total'])*100;
+					percent = Math.round(percent*100) / 100;
+					text_string = text_string.concat("<b>" + obj + "</b>" + ": " + percent.toString() + "%", '<br>')
+				}
+			})
+			// console.log(text_string)
+			div3.html(text_string)
+				.style("left", event.pageX + "px")     
+				.style("top", (event.pageY) + "px");  
+		})
+		.on("mouseleave", function (event,d) { // When user do not hover anymore
+			// Back to normal opacity: 1
+			d3.selectAll(".myRect")
+			.style("opacity",1)
+
+			div3
+					.style("opacity", 0)
+		})   
+
+})
+</script>
+
+
+
+
+</body>
+</html>
